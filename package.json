@@ -23,7 +23,7 @@
     "model-context-protocol"
   ],
   "author": "Coalesc Inc.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/coalesc/fisc.git"
