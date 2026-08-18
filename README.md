@@ -6,7 +6,7 @@ Connect AI agents to **Taxprep**, **DT Max**, and other Canadian tax preparation
 
 ## What is this?
 
-Canadian accounting firms prepare tax returns in software like Taxprep (Wolters Kluwer) and DT Max (Thomson Reuters). These tools have no AI interface. **fisc** bridges that gap — it lets any MCP-compatible AI agent read, populate, and manage tax returns programmatically.
+Canadian accounting firms prepare tax returns in software like Taxprep (Wolters Kluwer) and DT Max (Thomson Reuters). Those systems were built around professional tax workflows, not around one common interface for AI agents. **fisc** is an open interoperability layer that aims to give agents a consistent way to read, populate, and manage returns across tax software.
 
 ```
 Your AI agent
@@ -18,11 +18,15 @@ Taxprep  ·  DT Max  ·  ...
 
 ## Why open-source?
 
-The value isn't in the connector — it's in what flows through it. We believe every firm should be able to wire AI into their existing tax software without vendor lock-in. The more adapters exist, the more useful the ecosystem is for everyone.
+We do not think the connector should be the lock-in.
+
+Accounting firms should be able to connect AI to the tax software they already trust through an interface that is inspectable, portable, and open to contributions. A shared interoperability layer also makes it easier for developers and software vendors to add adapters without rebuilding the same plumbing in private.
+
+Coalesc is building its product above this layer: the engagement workflow, document intelligence, evidence, orchestration, review controls, and the reasoning that decides what should happen next. **Open the rails; compete on the intelligence and workflow.**
 
 ## Status
 
-**Early development.** We're building the Taxprep adapter first (via the CCH iFirm Web API), then DT Max.
+**Early development. fisc is not yet functional.** We're building the Taxprep adapter first via the CCH iFirm Taxprep Web API, then researching the best supported path for DT Max.
 
 ### Planned tools
 
@@ -37,13 +41,13 @@ The value isn't in the connector — it's in what flows through it. We believe e
 
 ### Planned adapters
 
-- **Taxprep** (CCH iFirm Web API) — in progress
-- **DT Max** (Thomson Reuters) — researching import format
+- **Taxprep** (CCH iFirm Taxprep Web API) — in progress
+- **DT Max** (Thomson Reuters) — integration path under research
 - More to come
 
 ## Architecture
 
-fisc uses a **vendor-neutral tax concept layer**. Instead of mapping directly to software-specific cell IDs, it translates semantic concepts:
+fisc uses a **vendor-neutral tax concept layer**. Instead of asking an agent to understand software-specific cell IDs, it can work with semantic concepts:
 
 ```typescript
 // What your agent says:
@@ -54,14 +58,10 @@ await client.callTool("set_field", {
   source: "t4_acme.pdf"
 });
 
-// What fisc translates to (Taxprep):
-// Cell T1.Towjac134 = 82400
-
-// What fisc translates to (DT Max):
-// Keyword EMPLOYMENT_INCOME = 82400
+// An adapter translates that concept to the tax software's native representation.
 ```
 
-The concept-to-cell mapping is maintained per tax year, per software, per return type.
+Concept-to-vendor mappings are maintained per tax year, software, and return type.
 
 ## Getting started
 
@@ -89,11 +89,8 @@ npm start
 src/
   index.ts              # MCP server entry point
   concepts/             # Vendor-neutral tax concept definitions
-    t1.ts               # T1 personal return concepts
   adapters/
     taxprep/            # CCH iFirm Taxprep adapter
-      client.ts         # API client
-      mappings/         # Concept → cell ID mappings by year
     dtmax/              # DT Max adapter (planned)
   tools/                # MCP tool implementations
 ```
@@ -102,16 +99,17 @@ src/
 
 We welcome contributions — especially:
 
-- **New adapters** for other tax software (Profile, Caseware, TurboTax Pro, etc.)
+- **New adapters** for professional tax software
 - **Concept mappings** for additional return types (T2, T3, T5013)
-- **Tax year updates** to cell ID mappings
+- **Tax year updates** to mappings
+- **Safer tool and review patterns** for AI-assisted tax workflows
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Who builds this?
 
-fisc is built by [Coalesc](https://coalesc.ai), an intake automation platform for Canadian accounting firms. We use fisc internally to connect our document extraction pipeline to the tax software our customers already use.
+fisc is built by [Coalesc](https://coalesc.ai), which is building an end-to-end workspace where accountants and AI prepare, review, and move client engagements forward together. We plan to use fisc as an interoperability layer between that workspace and the tax software firms already use.
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE)
