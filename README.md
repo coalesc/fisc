@@ -1,114 +1,296 @@
 # fisc
 
-Open-source MCP server for professional tax software.
+Open interoperability layer for professional tax software.
 
-Connect AI agents to **Taxprep**, **DT Max**, and other Canadian tax preparation packages through the [Model Context Protocol](https://modelcontextprotocol.io).
+**fisc lets software and AI work with tax returns through portable tax concepts instead of vendor-specific APIs, cell IDs, and file formats.** MCP is the first transport, not the architecture.
 
-## What is this?
+> **Status:** early development. fisc is not yet ready for production tax work. The Taxprep adapter is being built first; DT Max is planned after a supported integration path is confirmed.
 
-Canadian accounting firms prepare tax returns in software like Taxprep (Wolters Kluwer) and DT Max (Thomson Reuters). Those systems were built around professional tax workflows, not around one common interface for AI agents. **fisc** is an open interoperability layer that aims to give agents a consistent way to read, populate, and manage returns across tax software.
+## The idea
 
+Professional tax software is specialized and trusted. AI products should not need to replace it, and every developer should not have to rebuild the same private connector layer.
+
+fisc separates four things:
+
+```text
+AI agent / application
+        ↓
+MCP · SDK · REST (transports)
+        ↓
+TaxInteroperabilityService
+        ↓
+canonical tax concepts · evidence refs · write plans
+        ↓
+Taxprep adapter · DT Max adapter · ...
+        ↓
+professional tax software
 ```
-Your AI agent
-    ↓ MCP
-   fisc
-    ↓ adapters
-Taxprep  ·  DT Max  ·  ...
+
+A caller can work with a concept such as `employment_income` or `rrsp_deduction`. The adapter translates that concept to the representation used by the configured tax package for the right return type and tax year.
+
+That means the durable asset is the **common tax interface and adapter ecosystem**. MCP is simply one way to expose it.
+
+## Why open source?
+
+**We do not think the connector should be the lock-in.**
+
+Accounting firms should be able to connect software and AI to the tax systems they already trust through an interface that is inspectable, portable, and open to contributions. Developers and software vendors should be able to add adapters without rebuilding the same plumbing in private.
+
+Coalesc builds above this layer: engagement state, document intelligence, evidence, completeness, orchestration, review controls, and the reasoning that decides what should happen next.
+
+**Open the rails. Compete on the intelligence and workflow.**
+
+## What fisc is — and is not
+
+fisc aims to provide:
+
+- vendor-neutral tax concepts;
+- tax-year-aware vendor mappings;
+- adapter capability discovery;
+- portable return references;
+- evidence/source references;
+- safe read operations;
+- plan-before-write semantics;
+- idempotency and conflict guards;
+- diagnostics and form access where vendors support them;
+- multiple transports over the same core service.
+
+fisc is **not** intended to be:
+
+- a tax reasoning engine;
+- an eligibility or tax-position engine;
+- a replacement for professional tax software;
+- a filing authority;
+- a substitute for accountant review;
+- a store of client tax data by default.
+
+The interoperability layer should know **how to express an operation safely**. The host application and accountant remain responsible for **why the operation should happen**.
+
+## Safety model: plan before write
+
+A direct `set_field` call is simple, but it is a poor default for autonomous software.
+
+fisc uses a two-step write model:
+
+```text
+proposed changes
+      ↓
+plan_changes        ← no vendor mutation
+      ↓
+inspect mappings, warnings, evidence, conflicts
+      ↓
+policy / human approval
+      ↓
+apply_plan          ← explicit mutation
 ```
 
-## Why open-source?
+A write plan can include:
 
-We do not think the connector should be the lock-in.
+- the canonical concept;
+- proposed value;
+- source evidence references;
+- optional evidence content hashes;
+- the resolved vendor field;
+- warnings or unmapped concepts;
+- an optional expected current value to prevent stale overwrites;
+- an idempotency key.
 
-Accounting firms should be able to connect AI to the tax software they already trust through an interface that is inspectable, portable, and open to contributions. A shared interoperability layer also makes it easier for developers and software vendors to add adapters without rebuilding the same plumbing in private.
+The host application decides what approval policy is appropriate. fisc does not pretend that every tax write deserves the same level of autonomy.
 
-Coalesc is building its product above this layer: the engagement workflow, document intelligence, evidence, orchestration, review controls, and the reasoning that decides what should happen next. **Open the rails; compete on the intelligence and workflow.**
+## Core API
 
-## Status
-
-**Early development. fisc is not yet functional.** We're building the Taxprep adapter first via the CCH iFirm Taxprep Web API, then researching the best supported path for DT Max.
-
-### Planned tools
-
-| Tool | Description |
-|------|-------------|
-| `create_return` | Create a new tax return for a taxpayer |
-| `set_field` | Set a value in a return (e.g. employment income, medical expenses) |
-| `get_field` | Read a value from a return |
-| `list_forms` | List available forms in a return |
-| `get_diagnostics` | Retrieve validation diagnostics |
-| `list_returns` | List existing returns |
-
-### Planned adapters
-
-- **Taxprep** (CCH iFirm Taxprep Web API) — in progress
-- **DT Max** (Thomson Reuters) — integration path under research
-- More to come
-
-## Architecture
-
-fisc uses a **vendor-neutral tax concept layer**. Instead of asking an agent to understand software-specific cell IDs, it can work with semantic concepts:
+The TypeScript package exposes a transport-agnostic `TaxInteroperabilityService`.
 
 ```typescript
-// What your agent says:
-await client.callTool("set_field", {
-  return_id: "2026-john-smith",
-  concept: "employment_income",
-  value: 82400,
-  source: "t4_acme.pdf"
-});
+import { TaxInteroperabilityService } from "@coalesc/fisc";
 
-// An adapter translates that concept to the tax software's native representation.
+const fisc = new TaxInteroperabilityService([adapter]);
+
+const plan = await fisc.planChanges(
+  {
+    id: "return-123",
+    adapter: "taxprep",
+    tax_year: 2026,
+    return_type: "t1",
+  },
+  [
+    {
+      concept: "employment_income",
+      value: 82400,
+      sources: [
+        {
+          id: "t4-acme",
+          kind: "document",
+          page: 1,
+          content_hash: "sha256:...",
+        },
+      ],
+    },
+  ],
+  "engagement-456:employment-income:v1",
+);
+
+// Inspect plan.changes and plan.warnings first.
+// Applying remains explicit and approval-aware.
 ```
 
-Concept-to-vendor mappings are maintained per tax year, software, and return type.
+The same service can sit behind MCP, a REST API, a TypeScript SDK, a future Python SDK, or a vendor-hosted integration.
 
-## Getting started
+## MCP transport
 
-> **Note:** fisc is not yet functional. Star the repo to follow progress.
+MCP is the first supported transport because it gives agents a standard way to discover and invoke tools.
 
-```bash
-# Clone
-git clone https://github.com/coalesc/fisc.git
-cd fisc
+Planned/current tool surface:
 
-# Install
-npm install
+| Tool | Purpose |
+|---|---|
+| `list_concepts` | Discover portable tax concepts |
+| `list_adapters` | See configured adapters and capabilities |
+| `get_capabilities` | Inspect what an adapter can actually do |
+| `create_return` | Create a return where supported |
+| `get_field` | Read a concept from a return |
+| `plan_changes` | Resolve proposed writes without mutation |
+| `get_write_plan` | Inspect a plan before applying it |
+| `apply_plan` | Explicitly apply an approved plan |
+| `list_forms` | List forms where supported |
+| `get_diagnostics` | Read vendor diagnostics |
+| `list_returns` | List returns where supported |
 
-# Configure (when adapters are ready)
-cp .env.example .env
-# Add your CCH iFirm API credentials
+## Canonical tax concepts
 
-# Run
-npm start
+Instead of teaching every caller vendor-specific identifiers, fisc exposes semantic concepts:
+
+```typescript
+employment_income
+interest_income
+rrsp_deduction
+medical_expenses
+childcare_expenses
 ```
+
+Concept metadata can include human labels, CRA line numbers, and common source forms. Vendor mappings remain separate and are maintained per software, return type, and tax year.
+
+The open concept layer should stay factual and portable. Higher-order reasoning — for example, deciding whether a deduction should be claimed, by whom, and with what review policy — belongs above fisc.
+
+## Adapters
+
+### Taxprep
+
+**In progress.** The adapter targets the supported CCH iFirm Taxprep Web API. The current implementation can express capability metadata and produce safe write plans from mappings, but API-backed reads/writes are not yet implemented.
+
+### DT Max
+
+**Planned.** The integration path is still under research. We will not claim an adapter until there is a supported and maintainable way to integrate.
+
+### More adapters
+
+The adapter contract is intentionally vendor-neutral. Future contributors can add other professional tax packages without changing the core tax model.
+
+## Incubating sibling domain contracts
+
+Tax is the first implementation, but the same open-rails idea can extend to other professional accounting systems.
+
+This repository currently includes **non-functional contract skeletons** for two adjacent domains so the concepts can be discussed in public without pretending integrations exist.
+
+### Compilation
+
+The compilation skeleton models portable concepts such as:
+
+- trial balance lines;
+- accounts;
+- adjusting entries;
+- workpapers;
+- evidence references;
+- review points;
+- plan-before-write journal changes.
+
+A future adapter could translate those concepts to systems such as CaseWare while callers continue to speak accounting rather than vendor file structures.
+
+### Assurance
+
+The assurance skeleton models mechanics such as:
+
+- engagement type;
+- financial-statement assertions;
+- procedures and procedure status;
+- samples;
+- evidence;
+- findings;
+- workpapers;
+- sign-offs.
+
+It intentionally **does not** encode audit conclusions, materiality decisions, sufficiency judgments, or other professional judgment. The interface can move evidence and workpaper state; the auditor remains responsible for the conclusion.
+
+These contracts are incubating. They are not exposed as fisc MCP tools and they do not imply a working CaseWare integration.
 
 ## Project structure
 
-```
+```text
 src/
-  index.ts              # MCP server entry point
-  concepts/             # Vendor-neutral tax concept definitions
+  core/
+    types.ts             # portable tax contracts
+    service.ts           # transport-agnostic interoperability service
+  concepts/
+    index.ts             # canonical tax concepts
   adapters/
-    taxprep/            # CCH iFirm Taxprep adapter
-    dtmax/              # DT Max adapter (planned)
-  tools/                # MCP tool implementations
+    types.ts             # vendor adapter contract
+    taxprep/             # Taxprep adapter
+  transports/
+    mcp.ts               # MCP interface over the core service
+  incubating/
+    compilation.ts       # compilation contract skeleton
+    assurance.ts         # assurance contract skeleton
+  index.ts               # library exports
+  cli.ts                 # stdio MCP executable
+```
+
+## Design principles
+
+1. **Canonical concepts before vendor fields.** Callers should speak tax, not Taxprep internals.
+2. **Core before transport.** MCP, REST, and SDKs should expose the same domain service.
+3. **Capabilities over assumptions.** Every adapter says exactly what it supports.
+4. **Plan before mutation.** Autonomous software should inspect the write before changing a professional system.
+5. **Evidence travels with the value.** Interoperability should preserve provenance instead of stripping it away.
+6. **Tax year is explicit.** Mappings must never silently assume the current year.
+7. **Adapters translate; they do not reason.** Professional judgment belongs above the connector layer.
+8. **Open the plumbing, not the firm's private context.** Client data, firm policies, and proprietary reasoning do not belong in the open standard.
+
+## Getting started
+
+```bash
+git clone https://github.com/coalesc/fisc.git
+cd fisc
+npm install
+npm run build
+```
+
+To run the MCP transport once an adapter is configured:
+
+```bash
+cp .env.example .env
+# Add supported vendor API credentials
+npm start
 ```
 
 ## Contributing
 
-We welcome contributions — especially:
+We welcome contributions, especially around:
 
-- **New adapters** for professional tax software
-- **Concept mappings** for additional return types (T2, T3, T5013)
-- **Tax year updates** to mappings
-- **Safer tool and review patterns** for AI-assisted tax workflows
+- professional tax software adapters;
+- tax-year mappings;
+- additional return types such as T2, T3, and T5013;
+- canonical concept design;
+- conformance tests;
+- write-safety patterns;
+- compilation and assurance contract feedback.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Please keep one boundary in mind: **fisc is interoperability infrastructure, not an open-source tax brain.**
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Who builds this?
 
-fisc is built by [Coalesc](https://coalesc.ai), which is building an end-to-end workspace where accountants and AI prepare, review, and move client engagements forward together. We plan to use fisc as an interoperability layer between that workspace and the tax software firms already use.
+fisc is built by [Coalesc](https://coalesc.ai), the engagement workspace for accounting firms. Coalesc uses open interoperability infrastructure to connect its workflow to the professional systems firms already rely on.
 
 ## License
 

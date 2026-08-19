@@ -1,28 +1,37 @@
 /**
- * Taxprep adapter — wraps the CCH iFirm Taxprep Web API.
+ * Taxprep adapter — translates fisc operations to the CCH iFirm Taxprep Web API.
  *
- * Requires:
- *   TAXPREP_API_URL  — e.g. https://your-site.cchifirm.ca
- *   TAXPREP_API_KEY  — read-write API key from iFirm settings
- *
- * Reference:
- *   https://support.cchifirm.ca/en/content/cch_ifirm/web_api/api_about_cch_ifirm_tax_web_api.htm
+ * The adapter is intentionally honest about its current status. Planning can
+ * resolve known mappings without mutating Taxprep; API-backed reads and writes
+ * remain unavailable until the supported integration is implemented and tested.
  */
 
-import { type Adapter, type Diagnostic } from "../types.js";
+import { randomUUID } from "node:crypto";
+import type { TaxAdapter } from "../types.js";
+import type {
+	AdapterCapabilities,
+	ApplyPlanInput,
+	ApplyPlanResult,
+	CreateReturnInput,
+	Diagnostic,
+	FieldValue,
+	PlanChangesInput,
+	ReturnRef,
+	TaxFormRef,
+	WritePlan,
+} from "../../core/types.js";
 
-// Concept → Taxprep cell ID mappings, keyed by tax year.
-// These change every year when Wolters Kluwer updates the forms.
+/** Concept → Taxprep native field mappings, keyed by tax year. */
 const CELL_MAPS: Record<number, Record<string, string>> = {
-	// TODO: populate from Taxprep's API discovery tool (Swagger)
-	// Example: 2025: { employment_income: "T1.Towjac134", ... }
+	// TODO: populate only from supported/authorized Taxprep API discovery.
+	// 2026: { employment_income: "..." }
 };
 
-export class TaxprepAdapter implements Adapter {
+export class TaxprepAdapter implements TaxAdapter {
 	readonly name = "taxprep";
 
-	private baseUrl: string;
-	private apiKey: string;
+	private readonly baseUrl: string;
+	private readonly apiKey: string;
 
 	constructor() {
 		const url = process.env.TAXPREP_API_URL;
@@ -34,50 +43,76 @@ export class TaxprepAdapter implements Adapter {
 		this.apiKey = key;
 	}
 
-	async createReturn(params: {
-		taxpayer_name: string;
-		sin?: string;
-		tax_year: number;
-		return_type: string;
-	}): Promise<{ return_id: string }> {
-		// TODO: POST to iFirm API to create a return
-		throw new Error("Not yet implemented — waiting for iFirm API access");
+	getCapabilities(): AdapterCapabilities {
+		const mappedYears = Object.keys(CELL_MAPS).map(Number);
+		return {
+			adapter: this.name,
+			return_types: ["t1"],
+			tax_years: mappedYears,
+			operations: {
+				create_return: false,
+				read_field: false,
+				plan_changes: true,
+				apply_changes: false,
+				list_forms: false,
+				get_diagnostics: false,
+				list_returns: false,
+			},
+		};
 	}
 
-	async setField(params: {
-		return_id: string;
-		concept: string;
-		value: string | number;
-		source?: string;
-	}): Promise<void> {
-		const cellId = this.resolveCell(params.concept, 2025);
-		if (!cellId) {
-			throw new Error(`No Taxprep cell mapping for concept: ${params.concept}`);
-		}
-		// TODO: PUT to iFirm API to set cell value
-		throw new Error("Not yet implemented — waiting for iFirm API access");
+	async createReturn(_input: CreateReturnInput): Promise<ReturnRef> {
+		throw new Error("Taxprep create_return is not implemented yet");
 	}
 
-	async getField(params: {
-		return_id: string;
-		concept: string;
-	}): Promise<{ value: string | number | null }> {
-		const cellId = this.resolveCell(params.concept, 2025);
-		if (!cellId) {
-			throw new Error(`No Taxprep cell mapping for concept: ${params.concept}`);
-		}
-		// TODO: GET from iFirm API
-		throw new Error("Not yet implemented — waiting for iFirm API access");
+	async getField(_input: { return_ref: ReturnRef; concept: string }): Promise<FieldValue> {
+		throw new Error("Taxprep read_field is not implemented yet");
 	}
 
-	async getDiagnostics(params: {
-		return_id: string;
-	}): Promise<{ diagnostics: Diagnostic[] }> {
-		// TODO: GET diagnostics from iFirm API
-		throw new Error("Not yet implemented — waiting for iFirm API access");
+	async planChanges(input: PlanChangesInput): Promise<WritePlan> {
+		const mappings = CELL_MAPS[input.return_ref.tax_year] ?? {};
+		const changes = input.changes.map((change) => {
+			const nativeField = mappings[change.concept];
+			if (!nativeField) {
+				return {
+					...change,
+					status: "unmapped" as const,
+					message: `No Taxprep mapping for ${change.concept} in tax year ${input.return_ref.tax_year}`,
+				};
+			}
+			return {
+				...change,
+				status: "ready" as const,
+				native_field: nativeField,
+			};
+		});
+
+		const unresolved = changes.filter((change) => change.status !== "ready");
+		return {
+			plan_id: randomUUID(),
+			created_at: new Date().toISOString(),
+			return_ref: input.return_ref,
+			changes,
+			warnings: unresolved.length > 0 ? [`${unresolved.length} change(s) are not mapped for this Taxprep version`] : [],
+			idempotency_key: input.idempotency_key,
+		};
 	}
 
-	private resolveCell(concept: string, taxYear: number): string | undefined {
-		return CELL_MAPS[taxYear]?.[concept];
+	async applyPlan(_input: ApplyPlanInput): Promise<ApplyPlanResult> {
+		void this.baseUrl;
+		void this.apiKey;
+		throw new Error("Taxprep apply_changes is not implemented yet");
+	}
+
+	async listForms(_input: { return_ref: ReturnRef }): Promise<TaxFormRef[]> {
+		throw new Error("Taxprep list_forms is not implemented yet");
+	}
+
+	async listReturns(_input?: { tax_year?: number; return_type?: string }): Promise<ReturnRef[]> {
+		throw new Error("Taxprep list_returns is not implemented yet");
+	}
+
+	async getDiagnostics(_input: { return_ref: ReturnRef }): Promise<Diagnostic[]> {
+		throw new Error("Taxprep get_diagnostics is not implemented yet");
 	}
 }

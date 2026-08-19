@@ -1,25 +1,33 @@
 {
   "name": "@coalesc/fisc",
   "version": "0.1.0",
-  "description": "Open-source MCP server for professional tax software",
+  "description": "Open interoperability layer for professional tax software",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "fisc": "dist/index.js"
+    "fisc": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts"
   },
   "keywords": [
-    "mcp",
     "tax",
     "taxprep",
     "dtmax",
     "accounting",
     "cpa",
     "canada",
+    "interoperability",
+    "mcp",
     "model-context-protocol"
   ],
   "author": "Coalesc Inc.",

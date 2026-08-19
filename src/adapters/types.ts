@@ -1,44 +1,46 @@
+import type {
+	AdapterCapabilities,
+	ApplyPlanInput,
+	ApplyPlanResult,
+	CreateReturnInput,
+	Diagnostic,
+	FieldValue,
+	PlanChangesInput,
+	ReturnRef,
+	TaxFormRef,
+	WritePlan,
+} from "../core/types.js";
+
 /**
- * Every tax software adapter implements this interface.
+ * Contract implemented by every professional tax software adapter.
  *
- * The MCP tools call adapter methods with vendor-neutral concept IDs.
- * Each adapter translates those into the right API calls or file writes.
+ * This interface knows nothing about MCP, HTTP, CLI, or any other transport.
+ * It translates fisc's canonical tax operations into vendor-specific calls.
  */
-export interface Adapter {
+export interface TaxAdapter {
 	readonly name: string;
 
-	/** Create a new return, returning a stable identifier. */
-	createReturn(params: {
-		taxpayer_name: string;
-		sin?: string;
-		tax_year: number;
-		return_type: string;
-	}): Promise<{ return_id: string }>;
+	/** Describe exactly what this adapter can do today. */
+	getCapabilities(): AdapterCapabilities;
 
-	/** Set a field by concept ID. */
-	setField(params: {
-		return_id: string;
-		concept: string;
-		value: string | number;
-		source?: string;
-	}): Promise<void>;
+	/** Create a vendor return and return a portable reference to it. */
+	createReturn(input: CreateReturnInput): Promise<ReturnRef>;
 
-	/** Read a field by concept ID. */
-	getField(params: {
-		return_id: string;
-		concept: string;
-	}): Promise<{ value: string | number | null }>;
+	/** Read one canonical tax concept from a return. */
+	getField(input: { return_ref: ReturnRef; concept: string }): Promise<FieldValue>;
 
-	/** Retrieve diagnostics / validation errors. */
-	getDiagnostics(params: {
-		return_id: string;
-	}): Promise<{ diagnostics: Diagnostic[] }>;
-}
+	/**
+	 * Resolve and validate proposed writes without mutating the vendor system.
+	 * Agents should plan first, then a host application can decide whether to apply.
+	 */
+	planChanges(input: PlanChangesInput): Promise<WritePlan>;
 
-export interface Diagnostic {
-	severity: "error" | "warning" | "info";
-	code?: string;
-	message: string;
-	form?: string;
-	field?: string;
+	/** Apply a previously inspected plan. */
+	applyPlan(input: ApplyPlanInput): Promise<ApplyPlanResult>;
+
+	listForms(input: { return_ref: ReturnRef }): Promise<TaxFormRef[]>;
+
+	listReturns(input?: { tax_year?: number; return_type?: string }): Promise<ReturnRef[]>;
+
+	getDiagnostics(input: { return_ref: ReturnRef }): Promise<Diagnostic[]>;
 }
