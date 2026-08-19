@@ -17,6 +17,8 @@ export interface SourceRef {
 	label?: string;
 	page?: number;
 	locator?: string;
+	/** Optional digest supplied by the host to identify the exact evidence version. */
+	content_hash?: string;
 }
 
 /** Identifies a return without exposing vendor-specific internals to callers. */
@@ -39,12 +41,15 @@ export interface FieldChange {
 	value: TaxValue;
 	sources?: SourceRef[];
 	note?: string;
+	/** Optional compare-and-set guard against overwriting a value changed since planning began. */
+	expected_value?: TaxValue;
 }
 
 export interface FieldValue {
 	concept: string;
 	value: TaxValue;
 	sources?: SourceRef[];
+	native_field?: string;
 }
 
 export interface PlanChangesInput {
@@ -54,9 +59,10 @@ export interface PlanChangesInput {
 }
 
 export interface PlannedChange extends FieldChange {
-	status: "ready" | "unsupported" | "unmapped";
+	status: "ready" | "unsupported" | "unmapped" | "conflict";
 	message?: string;
 	native_field?: string;
+	current_value?: TaxValue;
 }
 
 /**
@@ -65,6 +71,7 @@ export interface PlannedChange extends FieldChange {
  */
 export interface WritePlan {
 	plan_id: string;
+	created_at: string;
 	return_ref: ReturnRef;
 	changes: PlannedChange[];
 	warnings: string[];
@@ -73,8 +80,8 @@ export interface WritePlan {
 
 export interface ApplyPlanInput {
 	plan: WritePlan;
-	/** Optional audit metadata supplied by the host application. */
-	approved_by?: string;
+	/** Identity supplied by the host after its approval policy has been satisfied. */
+	approved_by: string;
 }
 
 export interface ApplyPlanResult {
@@ -82,6 +89,7 @@ export interface ApplyPlanResult {
 	applied: number;
 	skipped: number;
 	warnings: string[];
+	vendor_revision?: string;
 }
 
 export interface Diagnostic {
