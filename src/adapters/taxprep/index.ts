@@ -90,6 +90,7 @@ export class TaxprepAdapter implements TaxAdapter {
 		const unresolved = changes.filter((change) => change.status !== "ready");
 		return {
 			plan_id: randomUUID(),
+			created_at: new Date().toISOString(),
 			return_ref: input.return_ref,
 			changes,
 			warnings: unresolved.length > 0 ? [`${unresolved.length} change(s) are not mapped for this Taxprep version`] : [],
