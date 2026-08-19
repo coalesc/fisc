@@ -17,6 +17,8 @@ function buildService(): TaxInteroperabilityService {
 	return service;
 }
 
+const taxValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
 const returnRefSchema = z.object({
 	id: z.string(),
 	adapter: z.string(),
@@ -30,10 +32,11 @@ const sourceSchema = z.object({
 	label: z.string().optional(),
 	page: z.number().int().positive().optional(),
 	locator: z.string().optional(),
+	content_hash: z.string().optional(),
 });
 
 export function createMcpServer(service = buildService()): McpServer {
-	const server = new McpServer({ name: "fisc", version: "0.2.0" });
+	const server = new McpServer({ name: "fisc", version: "0.1.0" });
 
 	server.tool(
 		"list_concepts",
@@ -85,7 +88,8 @@ export function createMcpServer(service = buildService()): McpServer {
 			changes: z.array(
 				z.object({
 					concept: z.string(),
-					value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+					value: taxValueSchema,
+					expected_value: taxValueSchema.optional(),
 					sources: z.array(sourceSchema).optional(),
 					note: z.string().optional(),
 				}),
