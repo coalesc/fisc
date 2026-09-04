@@ -1,38 +1,85 @@
 /**
- * Every tax software adapter implements this interface.
+ * Vendor-neutral adapter contracts for professional tax software.
  *
- * The MCP tools call adapter methods with vendor-neutral concept IDs.
- * Each adapter translates those into the right API calls or file writes.
+ * MCP is the agent-facing interface. Adapters translate these semantic
+ * operations into vendor APIs or other supported integration mechanisms.
  */
+
+export type ReturnType = "t1" | "t2" | "t3" | "t5013";
+export type MutationMode = "validate" | "commit";
+
+export interface EvidenceRef {
+	source_id: string;
+	source_type?: string;
+	page?: number;
+	checksum?: string;
+	note?: string;
+}
+
+export interface MutationReceipt {
+	status: "validated" | "committed";
+	vendor_reference?: string;
+	warnings?: string[];
+}
+
+export interface AdapterCapabilities {
+	return_types: ReturnType[];
+	operations: {
+		create_return: boolean;
+		set_field: boolean;
+		get_field: boolean;
+		list_forms: boolean;
+		list_returns: boolean;
+		get_diagnostics: boolean;
+	};
+}
+
 export interface Adapter {
 	readonly name: string;
 
-	/** Create a new return, returning a stable identifier. */
-	createReturn(params: {
-		taxpayer_name: string;
-		sin?: string;
-		tax_year: number;
-		return_type: string;
-	}): Promise<{ return_id: string }>;
+	getCapabilities(): Promise<AdapterCapabilities>;
 
-	/** Set a field by concept ID. */
+	createReturn(params: {
+		taxpayer_ref: string;
+		tax_year: number;
+		return_type: ReturnType;
+		mode: MutationMode;
+	}): Promise<{ return_id?: string; receipt: MutationReceipt }>;
+
 	setField(params: {
 		return_id: string;
+		tax_year: number;
 		concept: string;
-		value: string | number;
-		source?: string;
-	}): Promise<void>;
+		value: string | number | boolean | null;
+		evidence?: EvidenceRef;
+		mode: MutationMode;
+	}): Promise<{ receipt: MutationReceipt }>;
 
-	/** Read a field by concept ID. */
 	getField(params: {
 		return_id: string;
+		tax_year: number;
 		concept: string;
-	}): Promise<{ value: string | number | null }>;
+	}): Promise<{ value: string | number | boolean | null }>;
 
-	/** Retrieve diagnostics / validation errors. */
+	listForms(params: {
+		return_id: string;
+	}): Promise<{ forms: string[] }>;
+
+	listReturns(params?: {
+		return_type?: ReturnType;
+		tax_year?: number;
+	}): Promise<{ returns: TaxReturnSummary[] }>;
+
 	getDiagnostics(params: {
 		return_id: string;
 	}): Promise<{ diagnostics: Diagnostic[] }>;
+}
+
+export interface TaxReturnSummary {
+	return_id: string;
+	return_type: ReturnType;
+	tax_year: number;
+	status?: string;
 }
 
 export interface Diagnostic {
