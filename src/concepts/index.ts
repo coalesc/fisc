@@ -1,31 +1,29 @@
 /**
  * Vendor-neutral tax concept definitions.
  *
- * Each concept maps a semantic idea (e.g. "employment income") to metadata
- * that adapters use to find the right field in Taxprep, DT Max, etc.
+ * Each concept maps a semantic idea (for example "employment income") to
+ * metadata that adapters can translate into vendor-native fields.
  */
+
+import type { ReturnType } from "../adapters/types.js";
 
 export interface TaxConcept {
-	/** Human-readable label (English) */
 	label_en: string;
-	/** Human-readable label (French) */
 	label_fr: string;
-	/** CRA line number, if applicable */
 	cra_line?: string;
-	/** The CRA form this typically comes from */
 	source_form?: string;
+	gifi_code?: string;
 }
 
-export type ReturnType = "t1";
+export const RETURN_TYPES: ReturnType[] = ["t1", "t2", "t3", "t5013"];
 
 /**
- * T1 Personal Income Tax Return — core concepts.
+ * T1 Personal Income Tax Return — starter concepts.
  *
- * This is intentionally a starter set. Each concept here has a known
- * CRA line number and maps cleanly to both Taxprep and DT Max fields.
+ * This intentionally remains small. Concept packs should only contain fields
+ * whose tax-year and vendor mappings have been verified.
  */
 const T1_CONCEPTS: Record<string, TaxConcept> = {
-	// --- Income ---
 	employment_income: {
 		label_en: "Employment income",
 		label_fr: "Revenus d'emploi",
@@ -105,8 +103,6 @@ const T1_CONCEPTS: Record<string, TaxConcept> = {
 		label_fr: "Revenu total",
 		cra_line: "15000",
 	},
-
-	// --- Deductions ---
 	rrsp_deduction: {
 		label_en: "RRSP deduction",
 		label_fr: "Déduction pour REER",
@@ -140,8 +136,6 @@ const T1_CONCEPTS: Record<string, TaxConcept> = {
 		label_fr: "Revenu net",
 		cra_line: "23600",
 	},
-
-	// --- Non-refundable tax credits ---
 	basic_personal_amount: {
 		label_en: "Basic personal amount",
 		label_fr: "Montant personnel de base",
@@ -179,8 +173,6 @@ const T1_CONCEPTS: Record<string, TaxConcept> = {
 		label_fr: "Dons et cadeaux",
 		cra_line: "34900",
 	},
-
-	// --- Tax payable / refund ---
 	total_federal_tax: {
 		label_en: "Net federal tax",
 		label_fr: "Impôt fédéral net",
@@ -197,8 +189,13 @@ const T1_CONCEPTS: Record<string, TaxConcept> = {
 		label_fr: "Remboursement ou solde dû",
 		cra_line: "48400",
 	},
-} as const;
+};
 
-export const CONCEPTS: Record<ReturnType, Record<string, TaxConcept>> = {
+/**
+ * Only verified concept packs are published here. T2, T3 and T5013 are valid
+ * protocol return types, but their concept packs stay absent until mappings
+ * have been checked against CRA and each vendor for the relevant tax year.
+ */
+export const CONCEPTS: Partial<Record<ReturnType, Record<string, TaxConcept>>> = {
 	t1: T1_CONCEPTS,
 };
