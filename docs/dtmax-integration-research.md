@@ -13,15 +13,17 @@ a real document) or **UNVERIFIED**.
 
 ## Verdict
 
-A DT Max adapter is **read-rich and write-poor**, and — unlike Taxprep — **it needs no
-vendor relationship to start**.
+A DT Max adapter is **read-ready today and write-undecided**, and — unlike Taxprep —
+**it needs no vendor relationship to start**. Reading is proven against real returns.
+Writing hangs on one unopened file: whether `Tools → Extract` produces something we
+can also produce.
 
 | Operation | DT Max | Mechanism |
 | --- | --- | --- |
 | `list_forms` / concepts | ✅ | vendor-neutral, already in `src/concepts` |
 | **`get_field`** | ✅ **buildable today** | parse the *Sommaire comparatif* page of a produced return |
 | `set_field` — **T2** | ⚠️ plausible | **Standard GIFI file import**, documented and built for third parties |
-| `set_field` — **T1** | ❌ | no documented import path of any kind |
+| `set_field` — **T1 / T2 / T3** | ⚠️ **the open question** | **`Tools → Merge`**, DT Max's own client interchange — reads an Extract file back into a database |
 | `create_return` | ❌ | nothing documented |
 | `get_diagnostics` | ❓ | UNVERIFIED — not investigated |
 
@@ -122,11 +124,10 @@ A wrong number here is a wrong tax return; declining is the only acceptable fail
 | Nil return | total income $4,120, no tax, no refund | "No value" and "parse failed" are different, and must stay different |
 | Version drift | 28.21 vs 29.12 | Branch on the stamped version; never assume one layout |
 
-### Why the PDF beats the Extract file
+### The PDF is the better *read* source — but the Extract file is a different question
 
-DT Max's own `Tools → Extract` produces an interchange file, and **TaxCycle parses it**
-— proof a third party can, with no API and no vendor cooperation. But TaxCycle documents
-its own ceiling:
+For reading, the PDF wins. TaxCycle parses the Extract file — proof a third party can,
+with no API and no vendor cooperation — but documents its own ceiling:
 
 > *"this carryforward is limited by the data that is exported from DT Max® T2 and is not
 > as comprehensive as our other competitor carryforwards."*
@@ -135,14 +136,54 @@ its own ceiling:
 > returns in the Client Manager."*
 
 The PDF, by contrast, is produced for every client every year and needs **no action from
-the preparer** — they already print it. Still worth obtaining one Extract to measure
-whether it adds anything.
+the preparer** — they already print it.
+
+**But reading was never the interesting thing about Extract.** See §3.1.
 
 → https://www.taxcycle.com/resources/help-topics/carryforward/dt-max-carryforward/
 
 ---
 
-## 3 · The write path: GIFI, and only for T2
+## 3 · The write path
+
+Two candidates, not one. The first is documented and narrow. The second is undocumented
+and is the one that matters.
+
+### 3.1 · `Tools → Merge` — DT Max's own client interchange, and the open question
+
+**This was under-rated in the first pass of this document, and the correction matters.**
+
+`Tools → Extract` writes an interchange file containing selected families; **`Tools →
+Merge` reads one back into a database.** It is DT Max's sanctioned, in-product mechanism
+for moving complete client data between installations — **not limited to T2**, and not
+limited to the thin slice GIFI covers.
+
+Two things make it credible:
+
+- **It is DT Max's own mechanism**, shipped and supported, not a hole someone found.
+- **TaxCycle already parses the format** with no API and no vendor cooperation. What can
+  be read can usually be written.
+
+**What is not yet known, and settles it either way:** whether the file is text, XML, or
+proprietary binary. DT Max's data model *is* keywords — the preparer enters a keyword and
+a value — so if the Extract is a keyword dump, writing one is very tractable. If it is
+binary, this path closes and GIFI is all there is.
+
+**The real danger is not parsing — it is `savelevel`.** VERIFIED: Merge arbitrates by an
+internal counter incremented on every save, with a force-merge override. A file written
+with a higher savelevel **can overwrite a preparer's work**. Any write path must be
+built around never doing that, and validated on a throwaway database before it touches a
+real one. Also VERIFIED: client numbers must be unique or the merge fails, and **a T1
+client cannot be extracted without their whole family unit** — consistent with the four
+consecutive client numbers observed in one family in the corpus.
+
+→ https://support.drtax.ca/dtmax/eng/kb/dtmax/DT%20Max%20help%20directory/DT%20Max%20features/Extract%20and%20merge/w275.htm
+
+**One Extract file answers this.** `Tools → Extract`, one test family, to a file. Fifteen
+seconds of a preparer's time, no vendor involved. It is the highest-value artifact named
+anywhere in this document.
+
+### 3.2 · Standard GIFI file import — documented, supported, T2 only
 
 **VERIFIED — the only documented third-party → DT Max import.**
 
@@ -160,7 +201,7 @@ sample file reverse-engineered against RC4088 settles it.
 
 → https://support.drtax.ca/dtmax/eng/kb/dtmax/DT%20Max%20help%20directory/T2/w506.htm
 
-### Why T1 has no write path, and why that matters less than it sounds
+### 3.3 · What we would actually push, and why AFR does not close the gap
 
 **VERIFIED — CRA's Auto-fill My Return already populates DT Max, for free.** T3, T4, T4A,
 T4A(P), T4E, T4FHSA, T4OAS, T4RIF, T4RSP, T5, T5007, T5008, T5013, RC62, RC210, T2202,
@@ -169,13 +210,30 @@ ABIL / non-capital / capital loss history. Limits: 10 files per download, and CR
 not deliver more than 500 T5008 slips.
 
 So **the keying step for T1 slips is largely already eliminated by the government.** Any
-business case for a T1 `set_field` should be sized against AFR, not against manual entry.
-The remaining value is upstream: knowing what to ask for, and chasing what AFR cannot
-deliver.
+business case for a T1 `set_field` must be sized against AFR, not against manual entry.
+
+**But that sharpens the target rather than removing it.** AFR delivers *slips*. It does
+not deliver anything that arrives as a receipt, a declaration, or a judgment call:
+
+| What AFR does not deliver |
+| --- |
+| medical expenses — and the insured-client total that replaces the receipts |
+| charitable donations |
+| childcare expenses |
+| self-employment income and expenses |
+| rental income |
+| moving expenses |
+| anything the client had to be *asked* for |
+
+That list is precisely what an intake questionnaire collects. So the write path's value
+is not "type the T4 faster" — CRA already did that — it is **the non-slip half of the
+return, which only whoever spoke to the client can supply.**
+
+CRA fills the slips. fisc fills the rest. Nothing is replaced.
 
 → https://support.drtax.ca/dtmax/eng/kb/dtmax/DT%20Max%20help%20directory/T1/w499tdd.htm
 
-### Explicitly ruled out
+### 3.4 · Explicitly ruled out
 
 - **Writing client data files directly.** `12345.P02` is *"a Dr Tax proprietory format
   file"*; only the `DT1DB` index is Btrieve. The KB: *"If this file is lost or damaged it
@@ -246,11 +304,14 @@ core-service concern, not an MCP-surface one.
 
 ## Next steps, in order
 
-1. **Two files from a DT Max firm — 15 minutes, no vendor involvement.**
-   - a **standard GIFI file** from any CaseWare/Sage engagement → reverse the layout
-     against RC4088 and settle the only write path
-   - a **DT Max Extract file** (`Tools → Extract`, one test family) → measure whether it
-     beats the PDF for reading
+1. **One file, fifteen seconds, no vendor — and it decides the whole write question.**
+   A **DT Max Extract file**: `Tools → Extract`, one test family, to a file. Open it. If
+   it is text or a keyword dump, `Tools → Merge` is a supported write path for T1/T2/T3
+   and the adapter becomes bidirectional. If it is proprietary binary, that path closes
+   and GIFI is all there is. Nothing else in this document is worth as much per minute
+   of a customer's time.
+   *(A **standard GIFI file** is worth collecting at the same time — reverse the layout
+   against RC4088 — but it only ever unlocks T2.)*
 2. **Build the read adapter** against the six-document corpus. Version-gated: parse only
    recognised versions, refuse the rest.
 3. **Read the EULA.** **NOT DETERMINED** — the licence agreement is shown in-product only
@@ -269,7 +330,9 @@ core-service concern, not an MCP-surface one.
 ## What remains undetermined
 
 1. The GIFI import file layout.
-2. The DT Max Extract file structure.
+2. **The DT Max Extract file structure — now the single most valuable unknown.** Text,
+   XML or binary is not established. Nor is whether a written file survives `Merge`,
+   nor how `savelevel` must be set to add data without overwriting a preparer's work.
 3. The EULA's reverse-engineering clause.
 4. Which competitor formats the "Data conversion" feature reads, and whether it is
    self-serve or support-performed.

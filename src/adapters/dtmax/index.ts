@@ -14,11 +14,19 @@
  *            `cra_line` are present, matched by number, with French labels identical
  *            to ours. This is buildable with no vendor relationship.
  *
- *   write  — a Standard GIFI file import, documented and explicitly built for third
- *            parties ("produced by third party software such as Caseware or Simply
- *            Accounting"). T2 only. There is no T1 write path of any kind, and CRA's
- *            Auto-fill My Return already populates T1 slips for free, so the value of
- *            one is smaller than it first appears.
+ *   write  — two candidates. `Tools → Merge`, DT Max's own in-product client
+ *            interchange, reads back a file that `Tools → Extract` writes; it is not
+ *            limited to T2, and TaxCycle already parses that format with no API and no
+ *            vendor cooperation, so what can be read can probably be written. Whether
+ *            the file is text, XML or proprietary binary is NOT established, and one
+ *            Extract file settles it. Failing that, a Standard GIFI file import is
+ *            documented and explicitly built for third parties — but T2 only.
+ *
+ *            What we would push is not slips: CRA's Auto-fill My Return already
+ *            populates those for free. It is the half AFR cannot deliver — medical
+ *            totals, donations, childcare, self-employment, rental, moving — everything
+ *            that arrives as a receipt or a declaration rather than a slip, and which
+ *            only whoever spoke to the client can supply.
  *
  * Everything therefore stays disabled until the corresponding layout is verified
  * against real files. See `docs/dtmax-integration-research.md` for sources, the
@@ -60,13 +68,13 @@ export class DtMaxAdapter implements Adapter {
 
 	async getCapabilities(): Promise<AdapterCapabilities> {
 		return {
-			// GIFI import is T2-only, and reading applies to T1/T2/T3 returns. The
-			// current `AdapterCapabilities` shape cannot express "this operation, for
-			// these return types" — it carries one `return_types` list for the whole
-			// adapter and a flat boolean per operation. DT Max is the case that breaks
-			// it: claiming `set_field: true` lies about T1, `false` denies a real T2
-			// capability. Both are unacceptable in a layer whose job is telling an
-			// agent what it may attempt. See the research doc, §5.
+			// The current `AdapterCapabilities` shape cannot express "this operation,
+			// for these return types" — one `return_types` list for the whole adapter,
+			// a flat boolean per operation. DT Max breaks it: GIFI import is t2-only,
+			// while `Tools → Merge` would cover t1/t2/t3 if the format proves writable.
+			// Claiming `set_field: true` would lie about whichever half is unsupported;
+			// `false` denies a real capability. Both are unacceptable in a layer whose
+			// job is telling an agent what it may attempt. See the research doc, §5.
 			return_types: ["t1", "t2", "t3"],
 			operations: {
 				create_return: false,
@@ -89,7 +97,7 @@ export class DtMaxAdapter implements Adapter {
 		throw this.notConfigured("create_return");
 	}
 
-	async setField(params: {
+	async setField(_params: {
 		return_id: string;
 		tax_year: number;
 		concept: string;
@@ -97,11 +105,15 @@ export class DtMaxAdapter implements Adapter {
 		evidence?: EvidenceRef;
 		mode: MutationMode;
 	}): Promise<{ receipt: MutationReceipt }> {
+		// Neither candidate path is verified, so neither is offered. `Tools → Merge` is
+		// the one that would cover T1, and it carries a specific hazard beyond parsing:
+		// it arbitrates by a `savelevel` counter incremented on every save, with a
+		// force-merge override, so a file written with a higher level can overwrite a
+		// preparer's work. Any implementation has to be proven on a throwaway database
+		// before it is pointed at a real one.
 		throw this.notConfigured(
 			"set_field",
-			params.return_id.startsWith("t1")
-				? "DT Max has no T1 import path. CRA Auto-fill My Return already populates T1 slips."
-				: "The Standard GIFI import layout is not published; verify it against a real GIFI file first.",
+			"No write path is verified. `Tools → Merge` would cover this return type, but the Extract file format is unexamined; the Standard GIFI layout is unpublished and covers t2 only.",
 		);
 	}
 
