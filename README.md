@@ -66,7 +66,11 @@ src/
   adapters/
     types.ts                common adapter contract
     taxprep/                Taxprep adapter
-    dtmax/                  planned
+    dtmax/                  DT Max adapter
+docs/
+  cra-landscape.md         what the CRA opens, gates, and will never supply
+  dtmax-integration-research.md   DT Max: read path, write path, and what is unknown
+  prior-art.md             how the IRS and Intuit modelled tax logic
 ```
 
 An agent should work with concepts:
@@ -100,6 +104,31 @@ What is **not** part of this repository:
 - vendor SDK code, binaries, or documentation that cannot legally be redistributed
 
 Adapters are open only where vendor agreements permit it. A public adapter may expose an open contract while loading a separately licensed vendor SDK at runtime.
+
+## Research
+
+Findings are written down before they are built on, with sources, so the next reader can
+re-check rather than trust. Each claim is tagged verified or unverified, and each
+document ends with what it could **not** establish.
+
+| Document | Question it answers |
+| --- | --- |
+| [`docs/cra-landscape.md`](docs/cra-landscape.md) | What the CRA publishes openly, what it gates behind EFILE certification, and the half of a return it will never hold |
+| [`docs/dtmax-integration-research.md`](docs/dtmax-integration-research.md) | Whether DT Max can be read from and written to, measured against real returns and the vendor's full knowledge base |
+| [`docs/prior-art.md`](docs/prior-art.md) | How the IRS Fact Graph and Intuit's Tax Knowledge Graph model tax logic, and which vocabulary is worth adopting |
+
+Two facts from that work shape everything else here:
+
+**CRA's Auto-fill My Return already delivers slips into certified tax software, for
+free.** No integration should be justified by "types the T4 faster." The value is in
+what arrives as a receipt or a declaration — medical expenses, donations, childcare,
+self-employment, rental — which no tax authority can supply and only whoever spoke to the
+client can.
+
+**A vendor's own output is often a better source than its API.** DT Max has no API of any
+kind, yet a produced return carries every CRA line across five tax years, and **28 of the
+30 concepts in `src/concepts` appear in it**, matched by line number. Read what the
+software already prints before asking anyone for access.
 
 ## Vendor access
 

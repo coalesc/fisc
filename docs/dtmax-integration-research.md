@@ -1,6 +1,10 @@
 # DT Max — what a fisc adapter can and cannot do
 
 **Status:** research, no implementation. Findings from 2026-09-06 and 2026-09-07.
+**Companion documents:** [`cra-landscape.md`](./cra-landscape.md) for what the tax
+authority opens and gates, [`prior-art.md`](./prior-art.md) for how the IRS and Intuit
+modelled tax logic.
+
 **Method:** the entire public DT Max knowledge base (2,992 articles) fetched and parsed,
 the official T1 User Guide, the DT FormMax KB, CRA certification and EFILE pages, plus
 direct inspection of **six real DT Max output PDFs** from a live firm (licence 33113),
@@ -203,11 +207,14 @@ sample file reverse-engineered against RC4088 settles it.
 
 ### 3.3 · What we would actually push, and why AFR does not close the gap
 
-**VERIFIED — CRA's Auto-fill My Return already populates DT Max, for free.** T3, T4, T4A,
-T4A(P), T4E, T4FHSA, T4OAS, T4RIF, T4RSP, T5, T5007, T5008, T5013, RC62, RC210, T2202,
-RRSP limits **and full contribution history**, FHSA amounts, tuition carryforwards, and
-ABIL / non-capital / capital loss history. Limits: 10 files per download, and CRA will
-not deliver more than 500 T5008 slips.
+**VERIFIED — CRA's Auto-fill My Return already populates DT Max, for free** — T4, T4A,
+T5, T5008, T2202, RRSP and more, per DT Max's own page. Limits: 10 files per download,
+and CRA will not deliver more than 500 T5008 slips.
+
+**What Auto-fill is, and what it is gated on, lives in
+[`cra-landscape.md`](./cra-landscape.md)** — including the open question of whether a
+non-transmitting product can be certified for Auto-fill alone, which would change this
+picture substantially.
 
 So **the keying step for T1 slips is largely already eliminated by the government.** Any
 business case for a T1 `set_field` must be sized against AFR, not against manual entry.
@@ -238,10 +245,9 @@ CRA fills the slips. fisc fills the rest. Nothing is replaced.
 - **Writing client data files directly.** `12345.P02` is *"a Dr Tax proprietory format
   file"*; only the `DT1DB` index is Btrieve. The KB: *"If this file is lost or damaged it
   cannot be recovered, (except by restoring a backup)."* Never.
-- **Generating a T1/T2 EFILE transmission.** No public record layout, no XSD. CRA's
-  RC4018 leaks structure (SFD types 01–09, max 12 SFD records, 80-line free-format cap)
-  but publishes nothing sufficient, and states the gate plainly: *"You must use a software
-  product certified for EFILE to transmit the returns using a web service."*
+- **Generating a T1/T2 EFILE transmission.** No public record layout, no XSD, and the
+  gate is certification rather than technology. See
+  [`cra-landscape.md`](./cra-landscape.md) §2.
 - **Macros as a scripting facility.** 26 text macros, A–Z, **40 characters each**, and
   *"macros cannot consist of keywords, or keywords combined with numeric or alphanumeric
   information."*
