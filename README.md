@@ -47,6 +47,8 @@ Mutation tools default to **validate** rather than **commit**. An adapter must e
 
 MCP is an interface, not an authorization system. Production deployments must add controls around it.
 
+**Before enabling any vendor adapter, read [docs/security.md](docs/security.md)** — it covers the validate/commit boundary, why a SIN must never travel through a tool argument, where credentials belong, and the vendor-terms check that has to happen first.
+
 - **Least privilege:** use the narrowest vendor permissions available.
 - **Validate before commit:** writes should be previewed before they are applied.
 - **Evidence provenance:** material writes can carry a source document reference, page, and checksum.
