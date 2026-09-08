@@ -115,7 +115,7 @@ document ends with what it could **not** establish.
 | --- | --- |
 | [`docs/cra-landscape.md`](docs/cra-landscape.md) | What the CRA publishes openly, what it gates behind EFILE certification, and the half of a return it will never hold |
 | [`docs/dtmax-integration-research.md`](docs/dtmax-integration-research.md) | Whether DT Max can be read from and written to, measured against real returns and the vendor's full knowledge base |
-| [`docs/prior-art.md`](docs/prior-art.md) | How the IRS Fact Graph and Intuit's Tax Knowledge Graph model tax logic, and which vocabulary is worth adopting |
+| [`docs/prior-art.md`](docs/prior-art.md) | How others modelled tax logic, reasoned about missing information, ordered adaptive questions, and tracked required documents — and the two decisions that evidence settles |
 
 Two facts from that work shape everything else here:
 
@@ -129,6 +129,14 @@ client can.
 kind, yet a produced return carries every CRA line across five tax years, and **28 of the
 30 concepts in `src/concepts` appear in it**, matched by line number. Read what the
 software already prints before asking anyone for access.
+
+**Computing the tax is out of scope, and now for a measured reason.** Two mature US engines
+agree on federal income tax for only 79.6–84.4% of 111,347 households within $15, and the
+divergence is concentrated exactly where professional clients live: on wage-only inputs they
+differ on one record by $0.01, but add itemized deductions, capital income and pass-through
+business income and 1,000 records diverge, to a maximum of $27,840. No reusable Canadian
+engine exists in any case — `openfisca-canada` does not exist, and the only open T1 has no
+Quebec TP-1. See `prior-art.md` §9.
 
 ## Vendor access
 
