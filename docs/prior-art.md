@@ -203,6 +203,61 @@ Related: Lawsky, *Modeling Uncertainty in Tax Law* (2013); Pertierra, Lawsky & H
 and Lawsky's own engagement with Catala, *Coding the Code*, SMU Law Review 75 (2022),
 [10.25172/smulr.75.3.4](https://doi.org/10.25172/smulr.75.3.4).
 
+### Read from the primary text, 2026-09-07
+
+The essay was obtained and verified line by line. Four things sharpen the section above, and two
+correct claims that are easy to attach to her and that she does not make.
+
+**Her worked example is IRC §163(h), home mortgage interest** — not §152. §163(a) allows a
+deduction for "all interest" with **no** carve-out language (she contrasts §61's *"Except as
+otherwise provided in this subtitle"*), while §163(h)(1) denies it for personal interest. Read
+deductively the two are flatly inconsistent, and **"The statute itself does not tell us"** how to
+rank them. Hence *"simply on the statute's face, deductive logic is not sufficient"* and
+**"The Code is not flat."** Her formalisation:
+
+```
+W  = {Personal → Interest, QRI → Personal}
+δ3: Interest → Deductible
+δ2: Personal → ¬Deductible
+δ1: QRI      → Deductible
+<:  δ1 < δ2 < δ3
+```
+
+**Her modelling judgment is the argument for an `unless` tree over a narrowed condition.** The
+Code embeds qualified residence interest inside the *definition* of personal interest. She
+formalises it as an **exception anyway** — *"notwithstanding the language of the Code, qualified
+residence interest is conceptually an exception to the rule that personal interest is not
+deductible"* — because that is how practitioners reason. That is precisely the choice a
+requirement rule presents: narrow the base condition, or add a defeater.
+
+**What she actually endorses is simpler than "default logic" suggests.** Her rules are plain
+material conditionals plus a priority order — Horty-flavoured prioritized defaults, citing
+*Reasons as Defaults* (2012) — **not** Reiter's justification triple. And she hedges the whole
+programme: *"my claim isn't that default logic is **required** to represent rule-based legal
+reasoning, but rather that default logic is **preferable**… Whether to use default logic in a
+particular situation is a question of pragmatics."*
+
+**On who edits the formalisation**, which is the live question for any consumer of this library:
+*"one could **tag certain rules with priorities** instead of having to manually combine the rules
+to get the right answer"*, and *"**drafters** may be more likely to use formalization to check the
+structure of the statute"*. A review posture, aimed at drafters rather than programmers.
+
+**Two things she does not say, verified by counting the text:**
+
+- She **rejects** burden-of-proof accounts of defeasibility. "Burden" and "proof" each occur once,
+  in a sentence distancing her from Hage, whose *"reasons for defeasibility include only that the
+  burden of proof or the process of discovery may introduce new information"*. She sets aside
+  Vernon Walker on the same ground. Her thesis is defeasibility **intrinsic to the statute**.
+  Do not cite her for burden allocation.
+- She does **not** address open versus closed world. `open world`, `closed world`, `negation as
+  failure` and `presumption` each appear **zero** times.
+
+**One deliberate divergence for any implementation here.** Lawsky uses a **flat total order** over
+a rule list. Prefer **Catala's tree**, where priority is structural: a flat global order across a
+large document-type registry is exactly the artifact a professional cannot audit — it is DMN's
+semi-deprecated FIRST hit policy under another name. Nesting keeps each rule's exceptions local.
+That is a departure from her presentation, not a reading of it.
+
 ## 6 · Out of scope here: requirement modelling and completeness
 
 Three areas came out of the same searches and are **deliberately not in this repository**:
@@ -310,11 +365,67 @@ what the tax authority will and will not hand over, which is
 Recorded because a gap is a finding, and because the next person will otherwise search for it
 again.
 
-**The inversion.** Targeted searches for published work on *determining required documents or
-evidence from law* returned nothing. The field computes entitlements and decides eligibility;
-the "what must you hand me first" question appears to be unwritten. Oracle Intelligent Advisor's
-relevancy engine and the IRS Fact Graph are the only two systems that approach it, and neither
-is documented as such.
+> 🚨 **CORRECTED 2026-09-07. The claim below was wrong and is kept only so the correction is
+> legible.** A dedicated agent was asked to *falsify* it rather than confirm it, and did so on
+> three independent axes. Do not position anything on "nobody has done this".
+
+**~~The inversion.~~ The inversion is published, shipped, and patented — we searched the wrong
+vocabulary.** The original claim, retained: *"Targeted searches for published work on determining
+required documents or evidence from law returned nothing. The field computes entitlements and
+decides eligibility; the 'what must you hand me first' question appears to be unwritten."*
+
+What we missed:
+
+- **Fannie Mae Desktop Underwriter, in production since June 1995.** It applies underwriting
+  rules to a casefile and returns a **casefile-specific set of required verifications**, not a
+  template: *"DU documentation requirements are based on the specific risk factors present in
+  each loan file"*
+  ([Selling Guide B3-2-04](https://selling-guide.fanniemae.com/sel/b3-2-04/du-documentation-requirements)).
+  **And it is patented.** [US7653592B1](https://patents.google.com/patent/US7653592B1/en)
+  (Fannie Mae, filed 2005, granted 2010) describes the pipeline we thought was ours:
+  *"the document checklist is generated based on task list 60, which in turn is generated based
+  on codified findings file 136."* Continuations: US7925579B1, US8489498B1, US8275701, US8423451.
+  Freddie Mac's Loan Product Advisor does the analogue via Documentation Levels.
+
+- **The EU standardised the vocabulary.** [CCCEV 2.00](https://semiceu.github.io/CCCEV/releases/2.00/)
+  has `Requirement` and `Evidence` as top-level classes, with `EvidenceTypeList` (AND within a
+  list, OR between lists). The Once-Only Technical System's **Evidence Broker** takes a
+  requirement identifier and returns the evidence types that satisfy it. Legal basis: Single
+  Digital Gateway Regulation art. 14, 21 cross-border procedures.
+  **Important nuance: CCCEV gives the language to *state* the mapping; it specifies no mechanism
+  to *infer* it.** That distinction is where the residue below lives.
+
+- **KYC has a granted patent on it too** —
+  [US11188712B2](https://patents.google.com/patent/US11188712B2/en) (JPMorgan, granted 2021),
+  claim 1: a rules engine producing the KYC data required under FINRA Rule 2090.
+
+- **The academic literature exists under jurisprudential names, not product names.** *Burden of
+  proof* is the formal name for "who must establish what before the conclusion holds": Prakken &
+  Sartor; Gordon, Prakken & Walton, *The Carneades model of argument and burden of proof*,
+  [AIJ 171 (2007)](https://www.sciencedirect.com/science/article/pii/S0004370207000677), which
+  assigns a burden of production per propositional literal. Satoh's **PROLEG** encodes the
+  Japanese *presupposed ultimate fact* theory for exactly this. And in abductive logic
+  programming the **abducibles _are_** the facts that would have to be supplied.
+
+- **Backward chaining has shipped the input half for decades.** docassemble derives question
+  order from *undefined variables* — *"the logic of the interview is determined implicitly from
+  the requirements of the end result"*. Oracle Intelligent Advisor generates interviews from a
+  rulebase. And Jason Morris, cited in §4 above, wrote up the inversion himself using OpenFisca's
+  `/trace` to find "the ones that are unknown and are descendant only of unknown things above
+  them".
+
+**What actually survives, and it is much narrower than what we claimed:** the requirement →
+evidence *mapping layer* is standardised (CCCEV) and the *derivation from rules* is solved in
+lending and KYC. What is not published is **deriving that mapping from professional-standards or
+engagement-scope text rather than hand-authoring it**, and doing it **in the accounting-engagement
+domain**, where the verified state of the art is a template library — Suralink, DataSnipper,
+Karbon and AuditDashboard all generate request lists from templates or the prior year, and
+Vanta/Drata maintain a hand-curated control→evidence table. There is also **no formal model of
+ISA 500 / AS 1105 sufficiency**; the mature formalism there is Dempster-Shafer belief functions,
+which answers "is what I hold sufficient" — the aggregation direction, not the inversion.
+
+**Freedom to operate:** before any filing or public novelty claim, run a claims chart against
+US7653592B1 and US11188712B2.
 
 **Canadian tax formalization** is a 39-year-old Prolog paper and nothing since.
 

@@ -71,6 +71,7 @@ docs/
   cra-landscape.md         what the CRA opens, gates, and will never supply
   dtmax-integration-research.md   DT Max: read path, write path, and what is unknown
   prior-art.md             how the IRS and Intuit modelled tax logic
+  explaining-a-decision.md why a rule did NOT fire, and how to say so
 ```
 
 An agent should work with concepts:
@@ -116,6 +117,7 @@ document ends with what it could **not** establish.
 | [`docs/cra-landscape.md`](docs/cra-landscape.md) | What the CRA publishes openly, what it gates behind EFILE certification, and the half of a return it will never hold |
 | [`docs/dtmax-integration-research.md`](docs/dtmax-integration-research.md) | Whether DT Max can be read from and written to, measured against real returns and the vendor's full knowledge base |
 | [`docs/prior-art.md`](docs/prior-art.md) | How others modelled tax logic, reasoned about missing information, ordered adaptive questions, and tracked required documents — and the two decisions that evidence settles |
+| [`docs/explaining-a-decision.md`](docs/explaining-a-decision.md) | How to answer "why is this still outstanding, and what would change it" — the tri-state that records short-circuit evaluation, Doyle's blocking witness, and the joint-relevance bug Oracle documents |
 
 Two facts from that work shape everything else here:
 
