@@ -56,11 +56,25 @@ This is deliberate. Tax software vendors govern API access through agreements th
 
 We deliberately do not paraphrase any vendor's policy here. Read the vendor's, for the version in force on the day you deploy.
 
+### Entitlements make the prerequisite refuse rather than warn
+
+A prerequisite written only in a document is a prerequisite somebody skips. Every adapter declares the licences, modules, roles and deployment conditions a firm must already hold as a `requires` list, and refuses to construct until each one is asserted in `FISC_ENTITLEMENTS`. Nothing here can verify a licence; what it prevents is an adapter reaching a vendor nobody checked we were entitled to reach. See [entitlements.md](entitlements.md).
+
+Two of those entitlements are about **us**, not the firm: they assert that fisc runs in an environment the customer controls and that a credential does not travel to a third party. Vendor agreements in this market routinely restrict who may hold account access information and who counts as an authorized user of a practice's software, and a firm that hands its key to a supplier may be in breach of its own agreement. Build for where the credential already lives.
+
+### Do not imply a relationship we do not have
+
+Several vendors in this market restrict the use of their names and marks in a third party's materials, separately from anything about the code. **Do not use a vendor's logo anywhere in this repository or on a site that describes it, do not describe Coalesc as a vendor's partner, and do not imply certification, endorsement or approval.** Naming a product to say what an adapter talks to is descriptive and fine; a badge is not.
+
+This holds even where an integration is permitted. Permission to build and permission to advertise are separate grants, and the second one is usually in writing or not at all.
+
 ## 5. What belongs in this repository
 
 **Here:** vendor-neutral concepts, the adapter contract, the adapters we write, and documentation.
 
 **Not here:** vendor SDKs or binaries, code that links one, credentials, tokens, connection strings, taxpayer data, client data, or cell-ID maps obtained under an agreement that does not permit publishing them.
+
+That last one is why the `ifirm` adapter loads its cell vocabulary from a file the operator supplies (`IFIRM_CELL_MAP_PATH`) rather than from data in this repository. The mapping is the valuable part and it is frequently the part we are least free to publish.
 
 `.env.example` documents shape only. Real values belong in the customer's environment.
 
