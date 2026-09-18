@@ -14,13 +14,16 @@
  *            `cra_line` are present, matched by number, with French labels identical
  *            to ours. This is buildable with no vendor relationship.
  *
- *   write  — two candidates. `Tools → Merge`, DT Max's own in-product client
- *            interchange, reads back a file that `Tools → Extract` writes; it is not
- *            limited to T2, and TaxCycle already parses that format with no API and no
- *            vendor cooperation, so what can be read can probably be written. Whether
- *            the file is text, XML or proprietary binary is NOT established, and one
- *            Extract file settles it. Failing that, a Standard GIFI file import is
- *            documented and explicitly built for third parties — but T2 only.
+ *   write  — 🚫 FROZEN 2026-09-18. `Tools → Merge` reads back a file that
+ *            `Tools → Extract` writes, it is not limited to T2, and TaxCycle parses
+ *            the format — so the mechanism is real. The licence is the obstacle, not
+ *            the format: §5.4.4 prohibits developing software interfacing with the
+ *            product, and §1.2 defines that to reach the formats and methods, not only
+ *            the executable. No work proceeds here until counsel rules on the version
+ *            a firm actually accepted. See docs/dtmax-integration-research.md §3.1.
+ *
+ *            What remains open is the Standard GIFI file import — documented, and
+ *            explicitly built for third parties — but T2 only.
  *
  *            What we would push is not slips: CRA's Auto-fill My Return already
  *            populates those for free. It is the half AFR cannot deliver — medical
@@ -68,13 +71,10 @@ export class DtMaxAdapter implements Adapter {
 
 	async getCapabilities(): Promise<AdapterCapabilities> {
 		return {
-			// The current `AdapterCapabilities` shape cannot express "this operation,
-			// for these return types" — one `return_types` list for the whole adapter,
-			// a flat boolean per operation. DT Max breaks it: GIFI import is t2-only,
-			// while `Tools → Merge` would cover t1/t2/t3 if the format proves writable.
-			// Claiming `set_field: true` would lie about whichever half is unsupported;
-			// `false` denies a real capability. Both are unacceptable in a layer whose
-			// job is telling an agent what it may attempt. See the research doc, §5.
+			// NOTE: main now expresses this — `OperationSupport` is `false | ReturnType[]`,
+			// so GIFI's t2-only write is sayable without denying anything. Rebase this
+			// branch onto it and report `set_field: ["t2"]` once that path is verified.
+			// The shape used below is the pre-rebase one.
 			return_types: ["t1", "t2", "t3"],
 			operations: {
 				create_return: false,
@@ -113,7 +113,7 @@ export class DtMaxAdapter implements Adapter {
 		// before it is pointed at a real one.
 		throw this.notConfigured(
 			"set_field",
-			"No write path is verified. `Tools → Merge` would cover this return type, but the Extract file format is unexamined; the Standard GIFI layout is unpublished and covers t2 only.",
+			"No write path is available. The `Tools → Merge` route is frozen: the licence prohibits developing software interfacing with the product, whatever the format turns out to be. The Standard GIFI layout is unpublished and covers t2 only.",
 		);
 	}
 
