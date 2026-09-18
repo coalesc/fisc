@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { IFirmAdapter, configFromEnv } from "./adapters/ifirm/index.js";
 import { TaxprepAdapter } from "./adapters/taxprep/index.js";
 import {
 	type Adapter,
@@ -20,6 +21,15 @@ function loadAdapter(): Adapter | undefined {
 	switch (process.env.FISC_ADAPTER) {
 		case "taxprep":
 			return new TaxprepAdapter();
+		case "ifirm": {
+			const config = configFromEnv();
+			if (!config) {
+				throw new Error(
+					"FISC_ADAPTER=ifirm requires IFIRM_SITE_URL and IFIRM_API_KEY, read from the environment this process runs in. See docs/entitlements.md.",
+				);
+			}
+			return new IFirmAdapter(config);
+		}
 		case undefined:
 		case "":
 			return undefined;
