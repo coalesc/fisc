@@ -1,6 +1,6 @@
 {
   "name": "@coalesc/fisc",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Open-source MCP server for professional tax software",
   "type": "module",
   "main": "dist/index.js",
