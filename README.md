@@ -26,13 +26,20 @@ Canadian accounting firms already trust tax software that encodes years of tax r
 
 The MCP contract now supports T1, T2, T3, and T5013 as protocol return types. Only verified concept packs should be published; the current concept pack is still limited to a starter set for T1.
 
-The first vendor adapter is Taxprep. It remains intentionally disabled for production operations until the applicable CCH iFirm Taxprep API access, authentication model, endpoint contract, and vendor terms have been verified.
+Taxprep is two products with one name, so there are two adapters.
+
+| Adapter | What it talks to | State |
+|---|---|---|
+| `ifirm` | CCH iFirm Taxprep, the cloud module, over the vendor's Web API | endpoints built from published documentation, **never run against a live site** |
+| `taxprep` | Taxprep on the desktop, over the COM automation module | specified, no transport, every operation reports `false` |
+
+Neither should be pointed at a production return yet. The `ifirm` adapter can read and write cells where a verified cell map exists, and reports `set_field` and `get_field` as unsupported until one is loaded — the vocabulary is per-form and per-tax-year, and this repository ships none of it.
 
 ## MCP tools
 
 | Tool | Purpose |
 |---|---|
-| `get_capabilities` | Report the configured adapter and operations it actually supports |
+| `get_capabilities` | Report the configured adapter, the operations it supports per return type, and what the firm must hold to use it |
 | `list_concepts` | List verified vendor-neutral concepts for a return type |
 | `create_return` | Validate or create a tax return |
 | `set_field` | Validate or write a semantic tax field with optional evidence provenance |
@@ -43,9 +50,13 @@ The first vendor adapter is Taxprep. It remains intentionally disabled for produ
 
 Mutation tools default to **validate** rather than **commit**. An adapter must explicitly support a write operation before fisc should expose it as available.
 
+Support is declared **per return type**, not per operation. An adapter whose only sanctioned write path is corporate reports `set_field: ["t2"]` — a single boolean would have forced it to either promise a T1 write it cannot perform or deny a real T2 one.
+
 ## Safety model
 
 MCP is an interface, not an authorization system. Production deployments must add controls around it.
+
+**Before enabling any vendor adapter, read [docs/security.md](docs/security.md)** — it covers the validate/commit boundary, why a SIN must never travel through a tool argument, where credentials belong, and the vendor-terms check that has to happen first.
 
 - **Least privilege:** use the narrowest vendor permissions available.
 - **Validate before commit:** writes should be previewed before they are applied.
@@ -64,10 +75,12 @@ src/
   index.ts                 MCP server and safety defaults
   concepts/                verified vendor-neutral tax concepts
   adapters/
-    types.ts                common adapter contract
-    taxprep/                Taxprep adapter
-    dtmax/                  DT Max adapter
+    types.ts                common adapter contract, entitlements
+    ifirm/                  CCH iFirm Taxprep (cloud, Web API)
+    taxprep/                Taxprep desktop (COM), specified only
+    dtmax/                  DT Max (produced documents), specified only
 docs/
+  entitlements.md          what a firm must hold before an adapter runs
   cra-landscape.md         what the CRA opens, gates, and will never supply
   dtmax-integration-research.md   DT Max: read path, write path, and what is unknown
   prior-art.md             how the IRS and Intuit modelled tax logic
@@ -151,6 +164,12 @@ Before enabling a vendor adapter in production, verify:
 3. the authentication and credential boundary is approved;
 4. multi-tenant use is permitted where applicable;
 5. SDK/API redistribution terms permit any code or artifacts included here.
+
+Adapters declare these prerequisites as **entitlements** and refuse to start until the operator asserts them in `FISC_ENTITLEMENTS`. See [docs/entitlements.md](docs/entitlements.md).
+
+Two of those entitlements are about where fisc runs. Vendor agreements here routinely restrict who may hold a firm's account access information, so adapters are built to run in an environment the customer controls, with the credential read from that environment rather than transported to us.
+
+**Naming a vendor to say what an adapter talks to is descriptive. A logo, a "partner" claim, or any implication of certification or endorsement is not** — those need the vendor's written permission, separately from permission to build the integration at all.
 
 ## Contributing
 

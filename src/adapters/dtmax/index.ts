@@ -40,11 +40,15 @@ import {
 	type Adapter,
 	type AdapterCapabilities,
 	type Diagnostic,
+	type Entitlement,
 	type EvidenceRef,
 	type MutationMode,
 	type MutationReceipt,
 	type ReturnType,
 	type TaxReturnSummary,
+	assertEntitlements,
+	assertedEntitlements,
+	reachableReturnTypes,
 } from "../types.js";
 
 /**
@@ -66,24 +70,55 @@ const VERIFIED_LAYOUT_VERSIONS: readonly string[] = [
 	// Populate only once a version's layout has been verified against real returns.
 ];
 
+/**
+ * What a firm must hold, and — unusually for this repository — a statement of
+ * what this adapter will not touch.
+ *
+ * DT Max publishes no API, and §5.4.4 of the Thomson Reuters licence prohibits
+ * developing software that interfaces with the product. The only path that is
+ * plainly outside that clause is reading a document the firm produced and owns,
+ * so that boundary is declared here rather than left to a reader's goodwill.
+ */
+export const DTMAX_ENTITLEMENTS: Entitlement[] = [
+	{
+		id: "dtmax.licence_permits_the_integration",
+		description:
+			"The firm's DT Max licence, in the version accepted in-product (Help > About > licence agreement), has been read and permits this use. The published copy is stamped V.7/2014 and is not necessarily the binding one.",
+		source: "https://support.drtax.ca/dtmax/eng/kb/dtformax/pdf/eula_e.pdf",
+	},
+	{
+		id: "dtmax.documents_supplied_by_the_firm",
+		description:
+			"Anything read here is a return the firm produced and supplied. This adapter does not open a DT Max database, does not read or write its interchange files, and does not interface with the product.",
+		source: "docs/dtmax-integration-research.md",
+	},
+];
+
 export class DtMaxAdapter implements Adapter {
 	readonly name = "dtmax";
 
+	constructor() {
+		assertEntitlements(this.name, DTMAX_ENTITLEMENTS, assertedEntitlements());
+	}
+
 	async getCapabilities(): Promise<AdapterCapabilities> {
+		// Nothing is implemented, so nothing is claimed. When the produced-return
+		// reader lands, `get_field` becomes ["t1"] — the Sommaire comparatif is a
+		// T1/TP1 page — and the GIFI import, if it is ever verified, makes
+		// `set_field` ["t2"] without denying the T1 read. That is the distinction
+		// a single boolean per operation could not express.
+		const operations: AdapterCapabilities["operations"] = {
+			create_return: false,
+			set_field: false,
+			get_field: false,
+			list_forms: false,
+			list_returns: false,
+			get_diagnostics: false,
+		};
 		return {
-			// NOTE: main now expresses this — `OperationSupport` is `false | ReturnType[]`,
-			// so GIFI's t2-only write is sayable without denying anything. Rebase this
-			// branch onto it and report `set_field: ["t2"]` once that path is verified.
-			// The shape used below is the pre-rebase one.
-			return_types: ["t1", "t2", "t3"],
-			operations: {
-				create_return: false,
-				set_field: false,
-				get_field: false,
-				list_forms: false,
-				list_returns: false,
-				get_diagnostics: false,
-			},
+			return_types: reachableReturnTypes(operations),
+			operations,
+			requires: DTMAX_ENTITLEMENTS,
 		};
 	}
 
