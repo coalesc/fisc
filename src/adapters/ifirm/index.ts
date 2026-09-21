@@ -101,10 +101,21 @@ export function configFromEnv(env = process.env): IFirmConfig | undefined {
 		site,
 		apiKey,
 		cellMapPath: env.IFIRM_CELL_MAP_PATH,
-		timeoutSeconds: env.IFIRM_TIMEOUT_SECONDS
-			? Number(env.IFIRM_TIMEOUT_SECONDS)
-			: undefined,
+		timeoutSeconds: positiveSeconds(env.IFIRM_TIMEOUT_SECONDS),
 	};
+}
+
+/**
+ * A timeout that is not a positive number is ignored rather than propagated.
+ *
+ * `Number("abc")` is NaN, `NaN ?? 30` is still NaN, and `setTimeout` treats a
+ * NaN delay as 1ms — so a typo in the environment would abort every request
+ * immediately and look like the vendor timing out.
+ */
+function positiveSeconds(raw: string | undefined): number | undefined {
+	if (raw === undefined) return undefined;
+	const n = Number(raw);
+	return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 type CellMaps = Record<number, Record<string, string>>;
@@ -155,10 +166,18 @@ export class IFirmAdapter implements Adapter {
 
 	async getCapabilities(): Promise<AdapterCapabilities> {
 		// The cells endpoints are documented for t1/t2/t3, but an endpoint we
-		// cannot address is not a capability: without a verified cell map there
-		// is no concept this adapter can turn into a cellPath.
+		// cannot address is not a capability, and there are two separate reasons
+		// this adapter cannot address all three yet.
+		//
+		// Without a verified cell map there is no concept to turn into a
+		// cellPath at all. And even with one, `productFor()` cannot yet tell
+		// which product a document GUID belongs to, so every request is built
+		// against t1. Claiming t2 and t3 here would be precisely the lie this
+		// capability system exists to prevent — a caller would be told a
+		// corporate write is supported and get a request aimed at the wrong
+		// product. Both lists widen together once that lookup is verified.
 		const cellOperations: OperationSupport = this.hasAnyCellMap()
-			? (Object.keys(CELL_PRODUCTS) as ReturnType[])
+			? ["t1"]
 			: false;
 
 		const operations: AdapterCapabilities["operations"] = {
@@ -208,10 +227,11 @@ export class IFirmAdapter implements Adapter {
 		const value = formatValue(params.value);
 
 		if (params.mode === "validate") {
-			const [current] = await this.getData(product, documentId, [
+			const read = await this.getData(product, documentId, [
 				{ cellPath, returnId },
 			]);
-			const warnings: string[] = [];
+			const [current] = read.cells;
+			const warnings = [...read.warnings];
 			if (current?.value !== undefined && current.value !== "" && current.value !== value) {
 				warnings.push(
 					`${cellPath} currently holds '${current.value}' and would be overwritten with '${value}'.`,
@@ -241,10 +261,10 @@ export class IFirmAdapter implements Adapter {
 	}): Promise<{ value: string | number | boolean | null }> {
 		const { documentId, returnId } = parseDocumentRef(params.return_id);
 		const cellPath = this.resolveCell(params.concept, params.tax_year);
-		const [cell] = await this.getData(this.productFor(documentId), documentId, [
+		const read = await this.getData(this.productFor(documentId), documentId, [
 			{ cellPath, returnId },
 		]);
-		return { value: cell?.value ?? null };
+		return { value: read.cells[0]?.value ?? null };
 	}
 
 	async listForms(_params: { return_id: string }): Promise<{ forms: string[] }> {
@@ -332,18 +352,24 @@ export class IFirmAdapter implements Adapter {
 		product: string,
 		documentId: string,
 		cells: Array<{ cellPath: string; returnId: number }>,
-	): Promise<Array<{ cellPath: string; value: string | null }>> {
-		const { body } = await this.request<{
+	): Promise<{
+		cells: Array<{ cellPath: string; value: string | null }>;
+		warnings: string[];
+	}> {
+		const { body, warnings } = await this.request<{
 			result?: Array<{ cellPath?: string; value?: string | null }>;
 		}>(
 			"POST",
 			`/api/partner/1.0/${product}/documents/${documentId}/cells/getdata`,
 			cells,
 		);
-		return (body?.result ?? []).map((cell) => ({
-			cellPath: String(cell.cellPath ?? ""),
-			value: cell.value ?? null,
-		}));
+		return {
+			cells: (body?.result ?? []).map((cell) => ({
+				cellPath: String(cell.cellPath ?? ""),
+				value: cell.value ?? null,
+			})),
+			warnings,
+		};
 	}
 
 	private async request<T>(
@@ -389,7 +415,9 @@ export class IFirmAdapter implements Adapter {
 			if (left !== null && Number(left) < 25) {
 				warnings.push(`${left} iFirm API requests remain today.`);
 			}
-			return { body: (await response.json()) as T, warnings };
+			const raw = await response.text();
+			if (!raw) return { body: undefined, warnings };
+			return { body: JSON.parse(raw) as T, warnings };
 		} finally {
 			clearTimeout(timeout);
 		}
