@@ -6,6 +6,7 @@
  */
 
 import type { ReturnType } from "../adapters/types.js";
+import { T2_CONCEPTS } from "./t2.js";
 
 export interface TaxConcept {
 	label_en: string;
@@ -198,4 +199,5 @@ const T1_CONCEPTS: Record<string, TaxConcept> = {
  */
 export const CONCEPTS: Partial<Record<ReturnType, Record<string, TaxConcept>>> = {
 	t1: T1_CONCEPTS,
+	t2: T2_CONCEPTS,
 };
