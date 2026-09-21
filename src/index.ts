@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { IFirmAdapter, configFromEnv } from "./adapters/ifirm/index.js";
 import { TaxprepAdapter } from "./adapters/taxprep/index.js";
 import {
 	type Adapter,
@@ -12,7 +14,18 @@ import {
 } from "./adapters/types.js";
 import { CONCEPTS, RETURN_TYPES } from "./concepts/index.js";
 
-const server = new McpServer({ name: "fisc", version: "0.2.0" });
+/**
+ * The version travels with the package rather than being retyped here.
+ *
+ * It was "0.2.0" in three places while package.json said "0.1.0", which is the
+ * kind of drift nobody notices until a client is reasoning about which
+ * contract it is talking to.
+ */
+const { version: VERSION } = createRequire(import.meta.url)("../package.json") as {
+	version: string;
+};
+
+const server = new McpServer({ name: "fisc", version: VERSION });
 const returnTypeSchema = z.enum(["t1", "t2", "t3", "t5013"]);
 const modeSchema = z.enum(["validate", "commit"]);
 
@@ -20,6 +33,15 @@ function loadAdapter(): Adapter | undefined {
 	switch (process.env.FISC_ADAPTER) {
 		case "taxprep":
 			return new TaxprepAdapter();
+		case "ifirm": {
+			const config = configFromEnv();
+			if (!config) {
+				throw new Error(
+					"FISC_ADAPTER=ifirm requires IFIRM_SITE_URL and IFIRM_API_KEY, read from the environment this process runs in. See docs/entitlements.md.",
+				);
+			}
+			return new IFirmAdapter(config);
+		}
 		case undefined:
 		case "":
 			return undefined;
@@ -60,7 +82,7 @@ function requireAdapter(): Adapter {
 server.tool("get_capabilities", "Describe the configured adapter and supported operations", {}, async () => {
 	if (!adapter) {
 		return text({
-			protocol_version: "0.2.0",
+			protocol_version: VERSION,
 			configured_adapter: null,
 			return_types: RETURN_TYPES,
 			default_mutation_mode: "validate",
@@ -68,7 +90,7 @@ server.tool("get_capabilities", "Describe the configured adapter and supported o
 	}
 	try {
 		return text({
-			protocol_version: "0.2.0",
+			protocol_version: VERSION,
 			configured_adapter: adapter.name,
 			default_mutation_mode: "validate",
 			...(await adapter.getCapabilities()),
