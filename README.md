@@ -24,7 +24,14 @@ Canadian accounting firms already trust tax software that encodes years of tax r
 
 **Early development. Do not use fisc to modify production tax returns yet.**
 
-The MCP contract now supports T1, T2, T3, and T5013 as protocol return types. Only verified concept packs should be published; the current concept pack is still limited to a starter set for T1.
+The MCP contract supports T1, T2, T3, and T5013 as protocol return types. Only verified concept packs are published.
+
+- **T1** — 30 concepts, each carrying a CRA line number.
+- **T2** — 27 concepts keyed on **GIFI**, because a corporation's financial-statement data reaches the return through the General Index of Financial Information rather than through numbered lines. Labels are CRA's own from RC4088 in both languages, and every code was cross-checked against a real Corporate Taxprep export from a practising firm. 15 balance sheet, 12 income statement.
+
+GIFI is also the join between this layer and [papers](https://github.com/coalesc/papers): a balance read out of an engagement file and a cell written into a corporate return are the same concept when they carry the same code.
+
+`npm run verify` asserts what type checking cannot — unique codes, the schedule matching the code's range, and French labels that are actually translated.
 
 Taxprep is two products with one name, so there are two adapters.
 
@@ -74,6 +81,7 @@ MCP is an interface, not an authorization system. Production deployments must ad
 src/
   index.ts                 MCP server and safety defaults
   concepts/                verified vendor-neutral tax concepts
+    t2.ts                   T2 concepts keyed on GIFI
   adapters/
     types.ts                common adapter contract, entitlements
     ifirm/                  CCH iFirm Taxprep (cloud, Web API)

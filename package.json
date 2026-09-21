@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "verify": "node scripts/verify-concepts.mjs"
   },
   "keywords": [
     "mcp",
